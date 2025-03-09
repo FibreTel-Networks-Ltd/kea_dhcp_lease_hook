@@ -9,7 +9,6 @@ using namespace isc::hooks;
 using namespace isc::dhcp;
 
 const std::string API_URL = "https://api.fibretel.ca/webhook/dhcp";
-const std::string API_KEY = "";
 
 extern "C" int lease4_select(CalloutHandle &handle);
 
@@ -38,24 +37,6 @@ extern "C"
     return 0;
   }
 
-  std::string extract_link_layer_address(const std::vector<uint8_t> &duid)
-  {
-    if (duid.size() < 14)
-    {
-      return "invalid_duid";
-    }
-    std::ostringstream mac;
-    for (size_t i = 8; i < 14; ++i)
-    {
-      if (i != 8) // Skip first 8 bytes, get next 6 for MAC
-      {
-        mac << ":";
-      }
-      mac << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(duid[i]);
-    }
-    return mac.str();
-  }
-
   void make_api_call(const std::string &url, const std::string &leaseActIP, const std::string &leaseActMAC, int expired)
   {
     CURL *curl;
@@ -68,8 +49,7 @@ extern "C"
       std::ostringstream full_url;
       full_url << url << "?ip_address=" << leaseActIP
                << "&mac_address=" << leaseActMAC
-               << "&expired=" << expired
-               << "&api_key=" << API_KEY;
+               << "&expired=" << expired;
 
       curl_easy_setopt(curl, CURLOPT_URL, full_url.str().c_str());
       curl_easy_setopt(curl, CURLOPT_POST, 1L);
