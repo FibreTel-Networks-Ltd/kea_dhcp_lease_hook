@@ -10,8 +10,6 @@ using namespace isc::dhcp;
 
 const std::string API_URL = "https://api.fibretel.ca/webhook/dhcp/ipv6";
 
-extern "C" int lease4_select(CalloutHandle &handle);
-
 extern "C"
 {
 
@@ -104,39 +102,119 @@ extern "C"
     }
   }
 
-  int lease6_select(CalloutHandle &handle)
+  void handle_create_lease(CalloutHandle &handle)
   {
     Lease6Ptr lease;
     handle.getArgument("lease6", lease); // Retrieve lease object
 
     Pkt6Ptr query;
     handle.getArgument("query6", query);
-
     if (query)
     {
       uint8_t message_type = query->getType();
       int messageType = static_cast<int>(message_type);
       if (messageType == DHCPV6_SOLICIT)
       {
-        return 0;
+        return;
       }
     }
     std::string leaseActIP = lease->addr_.toText();
     std::string leaseActMAC = extract_link_layer_address(lease->duid_->getDuid());
-    std::cout << "KEA DHCPv6 lease select: " << leaseActIP << ", " << leaseActMAC << std::endl;
+    std::cout << "KEA DHCPv6 handle_create_lease : " << leaseActIP << ", " << leaseActMAC << std::endl;
     make_api_call(API_URL, leaseActIP, leaseActMAC, 0);
+  }
+
+  int lease6_select(CalloutHandle &handle)
+  {
+    std::cout << "[DEBUG] lease6_select CALLED" << std::endl;
+    handle_create_lease(handle);
+    return 0;
+  }
+
+  int lease6_renew(CalloutHandle &handle)
+  {
+    std::cout << "[DEBUG] lease6_renew CALLED" << std::endl;
+    handle_create_lease(handle);
+    return 0;
+  }
+
+  int lease6_rebind(CalloutHandle &handle)
+  {
+    std::cout << "[DEBUG] lease6_rebind CALLED" << std::endl;
+    handle_create_lease(handle);
+    return 0;
+  }
+
+  int pkt6_receive(CalloutHandle &callout_handle)
+  {
+    Pkt6Ptr pkt;
+
+    // Retrieve the incoming DHCPv6 packet
+    callout_handle.getArgument("query6", pkt);
+
+    if (pkt)
+    {
+      std::cout << "[DHCPv6 Packet Received] "
+                << "Message Type: " << static_cast<int>(pkt->getType())
+                << ", Transaction ID: " << pkt->getTransid()
+                << ", Client DUID: " << pkt->getClientId()
+                << std::endl;
+    }
+    else
+    {
+      std::cout << "Error: pkt6_receive triggered but no packet data available!" << std::endl;
+    }
+
+    return (0);
+  }
+
+  int leases6_committed(CalloutHandle &handle)
+  {
+    std::cout << "[Debug] leases6_commited CALLED" << std::endl;
+
+    // Get the leases collection
+    Lease6CollectionPtr leases;
+    handle.getArgument("leases6", leases);
+    if (!leases)
+    {
+      std::cerr << "ERROR: leases6 argument is missing!" << std::endl;
+      return 1; // Prevent crashing
+    }
+
+    // Iterate over the lease collection
+    for (const auto &lease : *leases)
+    {
+      std::string leaseActIP = lease->addr_.toText();
+      std::string leaseActMAC = extract_link_layer_address(lease->duid_->getDuid());
+      std::cout << "Lease assigned: " << leaseActIP << std::endl;
+      make_api_call(API_URL, leaseActIP, leaseActMAC, 0);
+    }
 
     return 0;
   }
 
-  int lease6_expire(CalloutHandle &handle)
+  void handle_release_lease(CalloutHandle &handle)
   {
     Lease6Ptr lease;
     handle.getArgument("lease6", lease);
     std::string leaseActIP = lease->addr_.toText();
     std::string leaseActMAC = extract_link_layer_address(lease->duid_->getDuid());
-    std::cout << "KEA DHCPv6 lease expire: " << leaseActIP << ", " << leaseActMAC << std::endl;
+    std::cout << "KEA DHCPv6 handle_release_lease: " << leaseActIP << ", " << leaseActMAC << std::endl;
     make_api_call(API_URL, leaseActIP, leaseActMAC, 1);
+  }
+
+  int lease6_expire(CalloutHandle &handle)
+  {
+
+    std::cout << "[Debug] lease6_expire CALLED" << std::endl;
+    handle_release_lease(handle);
+    return 0;
+  }
+
+  int lease6_release(CalloutHandle &handle)
+  {
+    std::cout << "[Debug] lease6_release CALLED" << std::endl;
+    handle_release_lease(handle);
     return 0;
   }
 }
