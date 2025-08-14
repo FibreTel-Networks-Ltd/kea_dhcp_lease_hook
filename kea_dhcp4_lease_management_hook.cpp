@@ -70,8 +70,7 @@ extern "C"
     }
   }
 
-  int lease4_select(CalloutHandle &handle)
-  {
+  void handle_create_lease(CalloutHandle &handle) {
     Lease4Ptr lease;
     handle.getArgument("lease4", lease); // Retrieve lease object
 
@@ -84,28 +83,52 @@ extern "C"
       int messageType = static_cast<int>(message_type);
       if (messageType == 1)
       {
-        return 0;
+        return;
       }
     }
     std::string leaseActIP = lease->addr_.toText();
     std::string leaseActMAC = lease->hwaddr_->toText(false);
-
+    std::cout << "KEA DHCPv4 handle_create_lease : " << leaseActIP << ", " << leaseActMAC << std::endl;
     make_api_call(API_URL, leaseActIP, leaseActMAC, 0);
-    std::cout << "lease4_select: " << leaseActIP << ", " << leaseActMAC << "\n";
+  
+  }
+
+  int lease4_select(CalloutHandle &handle)
+  {
+    std::cout << "[DEBUG] lease4_select CALLED" << std::endl;
+    handle_create_lease(handle);
     return 0;
+  }
+
+
+  int lease4_renew(CalloutHandle &handle)
+  {
+    std::cout << "[DEBUG] lease4_renew CALLED" << std::endl;
+    handle_create_lease(handle);
+    return 0;
+  }
+
+  int lease4_rebind(CalloutHandle &handle)
+  {
+    std::cout << "[DEBUG] lease4_rebind CALLED" << std::endl;
+    handle_create_lease(handle);
+    return 0;
+  }
+
+  void handle_release_lease(CalloutHandle &handle)
+  { 
+    Lease4Ptr lease;
+    handle.getArgument("lease4", lease);
+    std::string leaseActIP = lease->addr_.toText();
+    std::string leaseActMAC = lease->hwaddr_->toText(false);
+    std::cout << "KEA DHCPv4 handle_release_lease: " << leaseActIP << ", " << leaseActMAC << std::endl;
+    make_api_call(API_URL, leaseActIP, leaseActMAC, 1);
   }
 
   int lease4_expire(CalloutHandle &handle)
   {
-    Lease4Ptr lease;
-    handle.getArgument("lease4", lease);
-
-    std::string leaseActIP = lease->addr_.toText();
-    std::string leaseActMAC = lease->hwaddr_->toText(false);
-
-    std::cout << "lease4_expire: " << leaseActIP << ", " << leaseActMAC << std::endl;
-    make_api_call(API_URL, leaseActIP, leaseActMAC, 1);
-
+    std::cout << "[Debug] lease4_expire CALLED" << std::endl;
+    handle_release_lease(handle);
     return 0;
   }
 }
